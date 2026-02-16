@@ -1,7 +1,7 @@
 .zoom-controls {
   position: fixed;
   left: 50%;
-  bottom: 5px;
+  bottom: 37px;              /* bilo 5px */
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -12,6 +12,11 @@
   background: transparent;
   pointer-events: auto;
 }
+
+@media (max-width: 600px) {
+  .zoom-controls { bottom: 28px; }
+}
+
 
 .action-buttons-row {
   display: flex;
@@ -83,9 +88,13 @@
 .reset-control {
   position: fixed;
   right: 22px;
-  bottom: 22px;
+  bottom: 29px;
   z-index: 2;
   pointer-events: auto;
+}
+
+@media (max-width: 600px) {
+  .reset-control { bottom: 20px; }
 }
 
 .zoom-btn-extra {
