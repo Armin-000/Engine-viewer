@@ -26,7 +26,7 @@ ENGINE2.0/
 │
 ├─ public/                                # Static assets (served as web root)
 │  ├─ glb/
-│  │  └─ eco_cube.glb                     # Main 3D model (GLB)
+│  │  └─ engine2.glb                      # Main 3D model (GLB)
 │  │
 │  ├─ hdr/
 │  │  └─ venice_sunset_1k.hdr             # HDR environment lighting
@@ -36,9 +36,6 @@ ENGINE2.0/
 │  │  ├─ bitmap2.jpg
 │  │  └─ bitmap3.jpg
 │  │
-│  ├─ viewer/
-│  │  └─ data/
-│  │     └─ water.json                    # Water effect configuration
 │  │
 │  ├─ docs/
 │  │  └─ help/
@@ -53,8 +50,7 @@ ENGINE2.0/
 │  ├─ index.js                            # Viewer entry point (UI wiring, bootstrapping)
 │  ├─ core.js                             # Scene, renderer, camera, controls, render loop
 │  │
-│  ├─ effects/
-│  │  └─ water.js                         # Water surface / wave deformation logic
+│  │  
 │  │
 │  └─ models/                             # Engine modules
 │     ├─ engine.js                        # Engine orchestrator / lifecycle
