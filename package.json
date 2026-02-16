@@ -1,0 +1,32 @@
+{
+  "name": "solar-main",
+  "version": "1.0.0",
+  "description": "A professional, interactive **3D web viewer** for a solar / technical platform, built with **Three.js** and a modular **ES-module architecture**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "postbuild": "node ./scripts/copy-public-to-dist.js",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alphawave-software/solar.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alphawave-software/solar/issues"
+  },
+  "homepage": "https://github.com/alphawave-software/solar#readme",
+  "dependencies": {
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}
