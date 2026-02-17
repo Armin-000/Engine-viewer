@@ -1,4 +1,4 @@
-```md
+
 # ENGINE 2.0 – 3D Interactive Viewer
 
 ENGINE 2.0 is a modular 3D viewer built with Three.js and Vite.  
