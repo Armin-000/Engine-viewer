@@ -127,3 +127,203 @@ export function buildEngineTree(root) {
 
   return { modelTree, indexByPath, meshToPath };
 }
+
+/* ======================================================================
+   SIDEBAR GROUPING (TREE TRANSFORM)
+====================================================================== */
+
+const SIDEBAR_TOP_GROUPS = [
+  { key: 'main', title: 'Main engine' },
+  { key: 'parts', title: 'Engine parts' },
+  { key: 'addons', title: 'Engine accessories' },
+  { key: 'exhaust', title: 'Exhaust system' },
+];
+
+const SIDEBAR_GROUP_RULES = [
+  {
+    key: 'exhaust',
+    words: [
+      'exhaust',
+      'exhaust filter',
+      'continuation',
+      'manifold',
+      'muffler',
+      'silencer',
+      'cat',
+      'catalyst',
+      'catalytic',
+      'dpf',
+      'downpipe',
+      'tailpipe',
+      'pipe',
+      'flex',
+      'lambda',
+      'o2',
+    ],
+  },
+  {
+    key: 'addons',
+    words: [
+      'turbo',
+      'turbo additives',
+      'turbo carriers',
+      'turbo filter',
+      'turbo hose',
+      'turbo injection',
+      'turbo intake manifold',
+      'the other side of the turbo',
+      'intercooler',
+      'radiator',
+      'cooler',
+      'fan',
+      'pump',
+      'compressor',
+      'ac',
+      'a c',
+      'alternator',
+      'starter',
+      'battery',
+      'wiring',
+      'cable',
+      'harness',
+      'ecu',
+      'sensor',
+      'gear',
+    ],
+  },
+  {
+    key: 'parts',
+    words: [
+      'carrying',
+      'carrier',
+      'mount',
+      'mounts',
+      'screw',
+      'bolt',
+      'nut',
+      'washer',
+      'bracket',
+      'clamp',
+      'hose',
+      'hoses',
+      'tube',
+      'gasket',
+      'seal',
+      'oring',
+      'o ring',
+      'bearing',
+      'pulley',
+      'belt',
+      'chain',
+      'spring',
+      'cap',
+      'cover',
+      'housing',
+      'metal covers',
+      'plastic covers',
+      'stainless steel',
+      'surface block',
+      'lamella',
+      'load-bearing',
+      'columns',
+      'main interface',
+      'reduction',
+    ],
+  },
+];
+
+function foldNorm(s) {
+  return (s || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[_\-./\\]+/g, ' ')
+    .replace(/[^\w\s]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sidebarTitleOfNode(n) {
+  return (
+    n?.node?.userData?.displayName ||
+    uiClean(n?.name) ||
+    uiClean(n?.path?.split('/').pop()) ||
+    ''
+  );
+}
+
+function sidebarPickGroupKey(treeNode) {
+  const title = foldNorm(sidebarTitleOfNode(treeNode));
+  const path = foldNorm(treeNode?.path || '');
+  const crumb = foldNorm(treeNode?.node?.userData?.breadcrumb || '');
+
+  for (const r of SIDEBAR_GROUP_RULES) {
+    if (r.words.some((w) => title.includes(w) || path.includes(w) || crumb.includes(w))) return r.key;
+  }
+  return 'main';
+}
+
+function sidebarMakeGroupNode(basePath, g) {
+  return {
+    node: { userData: { displayName: g.title } },
+    name: g.title,
+    path: `${basePath}__sidebar/${g.key}`,
+    children: [],
+    _custom: { type: 'ui:group', key: g.key },
+  };
+}
+
+function pickDenseLevel(node, minChildren = 18, maxDepth = 5) {
+  let cur = node;
+  for (let d = 0; d < maxDepth; d++) {
+    const kids = Array.isArray(cur?.children) ? cur.children : [];
+    if (kids.length >= minChildren) return kids.slice();
+    if (kids.length === 1 && kids[0]?.children?.length) {
+      cur = kids[0];
+      continue;
+    }
+    break;
+  }
+  return Array.isArray(node?.children) ? node.children.slice() : [];
+}
+
+/**
+ *
+ * @param {Object} originalRoot
+ * @param {Object} opts
+ * @param {number} opts.minChildren
+ * @param {number} opts.maxDepth
+ * @param {Array}  opts.topGroups
+ */
+export function regroupTreeForSidebar(originalRoot, opts = {}) {
+  if (!originalRoot) return originalRoot;
+
+  const { minChildren = 18, maxDepth = 5, topGroups = SIDEBAR_TOP_GROUPS } = opts;
+
+  const basePath = originalRoot.path || 'root';
+  let sourceNodes = pickDenseLevel(originalRoot, minChildren, maxDepth);
+
+  const byKey = new Map();
+  topGroups.forEach((g) => byKey.set(g.key, sidebarMakeGroupNode(basePath, g)));
+
+  for (const n of sourceNodes) {
+    const key = sidebarPickGroupKey(n);
+    (byKey.get(key) || byKey.get('main')).children.push(n);
+  }
+
+  for (const g of byKey.values()) {
+    g.children.sort((a, b) =>
+      sidebarTitleOfNode(a).localeCompare(sidebarTitleOfNode(b), undefined, { sensitivity: 'base' })
+    );
+  }
+
+  return {
+    node: originalRoot.node,
+    name: originalRoot.name,
+    path: basePath,
+    children: topGroups.map((g) => byKey.get(g.key)),
+    _skipRender: true,
+  };
+}

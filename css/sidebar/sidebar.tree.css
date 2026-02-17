@@ -77,13 +77,26 @@
   max-height: 0;
   opacity: 0;
   transform: translateY(-2px);
-  transition: max-height 260ms var(--ease), opacity 180ms var(--ease2), transform 180ms var(--ease2);
+  transition:
+    max-height 320ms var(--ease),
+    opacity 180ms var(--ease2),
+    transform 180ms var(--ease2);
+  will-change: max-height, opacity, transform;
 }
 
 .comp-group[aria-expanded="true"] > .comp-group-panel{
-  max-height: 5000px;
+  max-height: var(--panel-h, 420px);
   opacity: 1;
   transform: translateY(0);
+}
+
+.comp-group-chev{
+  display: inline-block;
+  transition: transform 260ms var(--ease);
+}
+
+.comp-group[aria-expanded="true"] .comp-group-chev{
+  transform: rotate(180deg);
 }
 
 .comp-sublist{
@@ -315,3 +328,4 @@
   cursor: default;
   transition: none;
 }
+

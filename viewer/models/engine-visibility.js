@@ -18,7 +18,6 @@ export function createVisibilityController({ root, labelItems }) {
   const hoverDimmedLabels = new Set();
 
   const DIM_OPACITY = 0.18;
-
   const DIM_COLOR_MUL = 0.55;
 
   const asArray = (m) => (Array.isArray(m) ? m : [m]);
@@ -49,7 +48,6 @@ export function createVisibilityController({ root, labelItems }) {
   function dimLabelForMesh(mesh) {
     (labelItems || []).forEach((li) => {
       if (!li?.el || li.mesh !== mesh) return;
-
       li.el.style.opacity = '0.25';
       li.el.style.filter = 'blur(0.6px)';
     });
@@ -58,12 +56,10 @@ export function createVisibilityController({ root, labelItems }) {
   function restoreLabelForMesh(mesh) {
     (labelItems || []).forEach((li) => {
       if (!li?.el || li.mesh !== mesh) return;
-
       li.el.style.opacity = '';
       li.el.style.filter = '';
     });
   }
-
 
   /* ======================================================================
      HIDDEN STATE APPLY
@@ -142,7 +138,6 @@ export function createVisibilityController({ root, labelItems }) {
 
       mat.transparent = true;
       mat.opacity = Math.min(orig.opacity ?? 1, DIM_OPACITY);
-
       mat.depthWrite = false;
 
       if (mat.color) mat.color.multiplyScalar(DIM_COLOR_MUL);
@@ -178,7 +173,7 @@ export function createVisibilityController({ root, labelItems }) {
   }
 
   /* ======================================================================
-     PUBLIC: HOVER DIM API
+     PUBLIC: HOVER DIM API (low-level)
   ====================================================================== */
 
   function dimOthersForHover(hoveredMesh) {
@@ -209,11 +204,25 @@ export function createVisibilityController({ root, labelItems }) {
   }
 
   /* ======================================================================
+     PUBLIC: HOVER DIM API (UI/UX wrapper)
+  ====================================================================== */
+
+  function applyHoverUX(hoveredMesh) {
+    dimOthersForHover(hoveredMesh);
+    document.documentElement.classList.toggle('viewer--hover-dim', !!hoveredMesh);
+  }
+
+  function clearHoverUX() {
+    clearHoverDimming();
+    document.documentElement.classList.remove('viewer--hover-dim');
+  }
+
+  /* ======================================================================
      VISIBILITY MODES
   ====================================================================== */
 
   function showAllParts() {
-    clearHoverDimming();
+    clearHoverUX();
     clearIsolate();
 
     collectAllMeshes().forEach((m) => (m.visible = true));
@@ -223,7 +232,7 @@ export function createVisibilityController({ root, labelItems }) {
   }
 
   function showOnlyMeshes(allowedMeshesSet, ownerPath = null) {
-    clearHoverDimming();
+    clearHoverUX();
 
     if (!allowedMeshesSet || !allowedMeshesSet.size) {
       showAllParts();
@@ -245,7 +254,7 @@ export function createVisibilityController({ root, labelItems }) {
   }
 
   function refreshVisibility() {
-    clearHoverDimming();
+    clearHoverUX();
 
     if (activeFilterOwnerPath && lastAllowedSet && lastAllowedSet.size) {
       collectAllMeshes().forEach((m) => {
@@ -287,5 +296,7 @@ export function createVisibilityController({ root, labelItems }) {
 
     dimOthersForHover,
     clearHoverDim,
+    applyHoverUX,
+    clearHoverUX,
   };
 }

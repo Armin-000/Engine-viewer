@@ -1,4 +1,5 @@
 import { createBoatSpecsTreeNode, BOAT_SPECS } from './engine-specs.js';
+import { regroupTreeForSidebar } from './engine-tree.js';
 
 let sidebarToggleBtn = null;
 let sidebarEl = null;
@@ -11,7 +12,6 @@ let closeBtn = null;
 
 let btnByUuid = null;
 let btnByLabel = null;
-let btnByName = null;
 
 let focusHandler = null;
 let resetHandler = null;
@@ -41,7 +41,6 @@ export function resetSidebar() {
 
   btnByUuid = null;
   btnByLabel = null;
-  btnByName = null;
 }
 
 export function initComponentSidebar(deps = {}) {
@@ -83,7 +82,6 @@ export function initComponentSidebar(deps = {}) {
 
   btnByUuid = new Map();
   btnByLabel = new Map();
-  btnByName = new Map();
 
   const norm = (s) =>
     (s || '')
@@ -96,6 +94,28 @@ export function initComponentSidebar(deps = {}) {
       .replace(/[^\w\s]+/g, '')
       .replace(/\s+/g, ' ')
       .trim();
+
+  // SVG ICONS
+  const ICON_EYE = `
+    <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor"
+        d="M12 5C5.63636 5 2 12 2 12C2 12 5.63636 19 12 19C18.3636 19 22 12 22 12C22 12 18.3636 5 12 5ZM15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" fill="#ffffff"/> <path d="M12 5C5.63636 5 2 12 2 12C2 12 5.63636 19 12 19C18.3636 19 22 12 22 12C22 12 18.3636 5 12 5Z" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/> <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+
+  const ICON_EYE_OFF = `
+    <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor"
+        d="M15.6487 5.39489C14.4859 4.95254 13.2582 4.72021 12 4.72021C8.46997 4.72021 5.17997 6.54885 2.88997 9.71381C1.98997 10.9534 1.98997 13.037 2.88997 14.2766C3.34474 14.9051 3.83895 15.481 4.36664 16.0002M19.3248 7.69653C19.9692 8.28964 20.5676 8.96425 21.11 9.71381C22.01 10.9534 22.01 13.037 21.11 14.2766C18.82 17.4416 15.53 19.2702 12 19.2702C10.6143 19.2702 9.26561 18.9884 7.99988 18.4547" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/> <path id="vector_2" d="M15 12C15 13.6592 13.6592 15 12 15M14.0996 9.85541C13.5589 9.32599 12.8181 9 12 9C10.3408 9 9 10.3408 9 12C9 12.7293 9.25906 13.3971 9.69035 13.9166" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/> <path id="vector_3" d="M2 21.0002L22 2.7002" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  `;
+
+  function setEyeIcon(btnEl, isVisible) {
+    if (!btnEl) return;
+    btnEl.innerHTML = isVisible ? ICON_EYE : ICON_EYE_OFF;
+    btnEl.classList.toggle('is-off', !isVisible);
+    btnEl.setAttribute('aria-pressed', String(!isVisible));
+  }
 
   function clearActiveItem() {
     sidebarListEl
@@ -181,7 +201,11 @@ export function initComponentSidebar(deps = {}) {
     `;
 
     header.appendChild(closeBtn);
-    closeBtn.addEventListener('click', closeSidebar);
+    closeBtn.addEventListener('click', () => {
+      getVisibility?.()?.clearHoverUX?.();
+      clearHover?.();
+      closeSidebar();
+    });
   } else {
     closeBtn = header?.querySelector('.component-close') || null;
   }
@@ -222,182 +246,6 @@ export function initComponentSidebar(deps = {}) {
   }
 
   ensureFooter();
-
-  const TOP_GROUPS = [
-    { key: 'main', title: 'Main engine' },
-    { key: 'parts', title: 'Engine parts' },
-    { key: 'addons', title: 'Engine accessories' },
-    { key: 'exhaust', title: 'Exhaust system' },
-  ];
-
-  const GROUP_RULES = [
-    {
-      key: 'exhaust',
-      words: [
-        'exhaust',
-        'exhaust filter',
-        'continuation',
-        'manifold',
-        'muffler',
-        'silencer',
-        'cat',
-        'catalyst',
-        'catalytic',
-        'dpf',
-        'downpipe',
-        'tailpipe',
-        'pipe',
-        'flex',
-        'lambda',
-        'o2',
-      ],
-    },
-    {
-      key: 'addons',
-      words: [
-        'turbo',
-        'turbo additives',
-        'turbo carriers',
-        'turbo filter',
-        'turbo hose',
-        'turbo injection',
-        'turbo intake manifold',
-        'the other side of the turbo',
-        'intercooler',
-        'radiator',
-        'cooler',
-        'fan',
-        'pump',
-        'compressor',
-        'ac',
-        'a c',
-        'alternator',
-        'starter',
-        'battery',
-        'wiring',
-        'cable',
-        'harness',
-        'ecu',
-        'sensor',
-        'gear',
-      ],
-    },
-    {
-      key: 'parts',
-      words: [
-        'carrying',
-        'carrier',
-        'mount',
-        'mounts',
-        'screw',
-        'bolt',
-        'nut',
-        'washer',
-        'bracket',
-        'clamp',
-        'hose',
-        'hoses',
-        'tube',
-        'gasket',
-        'seal',
-        'oring',
-        'o ring',
-        'bearing',
-        'pulley',
-        'belt',
-        'chain',
-        'spring',
-        'cap',
-        'cover',
-        'housing',
-        'metal covers',
-        'plastic covers',
-        'stainless steel',
-        'surface block',
-        'lamella',
-        'load-bearing',
-        'columns',
-        'main interface',
-        'reduction',
-      ],
-    },
-  ];
-
-  function titleOfNode(n) {
-    return (
-      n?.node?.userData?.displayName ||
-      (typeof prettyFromNodeName === 'function' ? prettyFromNodeName(n?.name) : n?.name) ||
-      n?.name ||
-      ''
-    );
-  }
-
-  function pickGroupKey(treeNode) {
-    const t = norm(titleOfNode(treeNode));
-    const p = norm(treeNode?.path || '');
-
-    for (const r of GROUP_RULES) {
-      if (r.words.some((w) => t.includes(w) || p.includes(w))) return r.key;
-    }
-    return 'main';
-  }
-
-  function makeGroupNode(basePath, g) {
-    return {
-      node: { userData: { displayName: g.title } },
-      name: g.title,
-      path: `${basePath}__sidebar/${g.key}`,
-      children: [],
-      _custom: { type: 'ui:group', key: g.key },
-    };
-  }
-
-  function regroupTreeForSidebar(originalRoot) {
-    if (!originalRoot) return originalRoot;
-
-    const basePath = originalRoot.path || 'root';
-    let sourceNodes = Array.isArray(originalRoot.children) ? originalRoot.children.slice() : [];
-
-    const pickDenseLevel = (node, minChildren = 18, maxDepth = 4) => {
-      let cur = node;
-      for (let d = 0; d < maxDepth; d++) {
-        const kids = Array.isArray(cur?.children) ? cur.children : [];
-        if (kids.length >= minChildren) return kids.slice();
-        if (kids.length === 1 && kids[0]?.children?.length) {
-          cur = kids[0];
-          continue;
-        }
-        break;
-      }
-      return Array.isArray(node?.children) ? node.children.slice() : [];
-    };
-
-    sourceNodes = pickDenseLevel(originalRoot, 18, 5);
-
-    const byKey = new Map();
-    TOP_GROUPS.forEach((g) => byKey.set(g.key, makeGroupNode(basePath, g)));
-
-    for (const n of sourceNodes) {
-      const key = pickGroupKey(n);
-      (byKey.get(key) || byKey.get('main')).children.push(n);
-    }
-
-    for (const g of byKey.values()) {
-      g.children.sort((a, b) => {
-        const la = titleOfNode(a);
-        const lb = titleOfNode(b);
-        return la.localeCompare(lb, undefined, { sensitivity: 'base' });
-      });
-    }
-
-    return {
-      node: originalRoot.node,
-      name: originalRoot.name,
-      path: basePath,
-      children: TOP_GROUPS.map((g) => byKey.get(g.key)),
-      _skipRender: true,
-    };
-  }
 
   function isGroupActive(treeNode) {
     if (typeof getActiveFilterOwnerPath !== 'function') return false;
@@ -452,13 +300,12 @@ export function initComponentSidebar(deps = {}) {
     const groupEye = document.createElement('button');
     groupEye.type = 'button';
     groupEye.className = 'component-eye component-eye--group';
-    groupEye.innerHTML = '👁';
+    groupEye.setAttribute('aria-label', 'Toggle visibility for group');
 
     const updateGroupEyeState = () => {
       const meshes = collectMeshesInSubtree(treeNode);
       const anyVisible = meshes.some((m) => !isMeshHidden?.(m));
-      groupEye.classList.toggle('is-off', !anyVisible);
-      groupEye.innerHTML = anyVisible ? '👁' : '🗙';
+      setEyeIcon(groupEye, anyVisible);
     };
 
     updateGroupEyeState();
@@ -466,6 +313,10 @@ export function initComponentSidebar(deps = {}) {
     groupEye.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      getVisibility?.()?.clearHoverUX?.();
+      clearHover?.();
+
       if (isFocusMode?.()) exitFocusMode?.();
 
       const meshes = collectMeshesInSubtree(treeNode);
@@ -527,6 +378,7 @@ export function initComponentSidebar(deps = {}) {
         btn.appendChild(right);
 
         btn.addEventListener('click', () => {
+          getVisibility?.()?.clearHoverUX?.();
           clearHover?.();
           setActiveItem(btn);
           collapseAllGroupsExceptPath(btn);
@@ -556,27 +408,20 @@ export function initComponentSidebar(deps = {}) {
 
       btn.addEventListener('mouseenter', () => {
         if (isFocusMode?.()) return;
-
-        getVisibility?.()?.clearHoverDim?.();
-        getVisibility?.()?.dimOthersForHover?.(mesh);
-
+        getVisibility?.()?.applyHoverUX?.(mesh);
         setHoverMesh?.(mesh);
-
-        document.documentElement.classList.add('viewer--hover-dim');
         btn.classList.add('is-hovered');
       });
 
       btn.addEventListener('mouseleave', () => {
         if (isFocusMode?.()) return;
-
-        getVisibility?.()?.clearHoverDim?.();
+        getVisibility?.()?.clearHoverUX?.();
         clearHover?.();
-
-        document.documentElement.classList.remove('viewer--hover-dim');
         btn.classList.remove('is-hovered');
       });
 
       btn.addEventListener('click', () => {
+        getVisibility?.()?.clearHoverUX?.();
         clearHover?.();
         setActiveItem(btn);
         collapseAllGroupsExceptPath(btn);
@@ -586,14 +431,23 @@ export function initComponentSidebar(deps = {}) {
       const eyeBtn = document.createElement('button');
       eyeBtn.type = 'button';
       eyeBtn.className = 'component-eye';
-      eyeBtn.innerHTML = isMeshHidden?.(mesh) ? '🗙' : '👁';
+      eyeBtn.setAttribute('aria-label', 'Toggle visibility');
+
+      setEyeIcon(eyeBtn, !isMeshHidden?.(mesh));
+
       eyeBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        getVisibility?.()?.clearHoverUX?.();
+        clearHover?.();
+
         if (isFocusMode?.()) exitFocusMode?.();
+
         const nextVisible = toggleMeshHidden?.(mesh);
         refreshVisibility?.();
-        eyeBtn.innerHTML = nextVisible ? '👁' : '🗙';
+
+        setEyeIcon(eyeBtn, nextVisible);
         updateGroupEyeState();
         clearActiveItem();
       });
@@ -623,8 +477,26 @@ export function initComponentSidebar(deps = {}) {
 
     headerBtn.addEventListener('click', () => {
       const opened = section.getAttribute('aria-expanded') === 'true';
+      animatePanel(section, !opened);
+
+
+      const isTopGroup =
+        section.parentElement === sidebarListEl ||
+        section.parentElement?.parentElement === sidebarListEl;
+
+      if (!opened && isTopGroup) {
+        const topGroups = sidebarListEl.querySelectorAll(':scope > li > .comp-group, :scope > .comp-group');
+        topGroups.forEach((g) => {
+          if (g !== section) {
+            animatePanel(g, false);
+
+          }
+        });
+      }
+
       section.setAttribute('aria-expanded', String(!opened));
 
+      getVisibility?.()?.clearHoverUX?.();
       clearHover?.();
 
       if (isGroupActive(treeNode)) {
@@ -641,13 +513,31 @@ export function initComponentSidebar(deps = {}) {
       updateGroupEyeState();
     });
   }
+  
+    function setPanelHeight(section) {
+      const panel = section?.querySelector('.comp-group-panel');
+      if (!panel) return;
+      panel.style.setProperty('--panel-h', `${panel.scrollHeight}px`);
+    }
+
+    function animatePanel(section, expand) {
+      if (!section) return;
+
+      setPanelHeight(section);
+
+      section.setAttribute('aria-expanded', expand ? 'true' : 'false');
+    }
 
   const sidebarTree = regroupTreeForSidebar(modelTree);
   renderTreeNode(sidebarTree, sidebarListEl, true);
 
   focusHandler = (e) => {
-    let btn = btnByUuid.get(e?.detail?.uuid) || btnByLabel.get(norm(e?.detail?.label));
+    const btn = btnByUuid.get(e?.detail?.uuid) || btnByLabel.get(norm(e?.detail?.label));
     if (!btn) return;
+
+    getVisibility?.()?.clearHoverUX?.();
+    clearHover?.();
+
     setActiveItem(btn);
     collapseAllGroupsExceptPath(btn);
     scrollIntoViewIfNeeded(btn);
@@ -655,10 +545,11 @@ export function initComponentSidebar(deps = {}) {
   window.addEventListener('engine:focus', focusHandler);
 
   resetHandler = () => {
+    getVisibility?.()?.clearHoverUX?.();
     clearHover?.();
+
     clearActiveItem();
     collapseAllGroups();
-    closeSidebar();
     showAllParts?.();
     refreshVisibility?.();
   };
@@ -674,6 +565,10 @@ export function initComponentSidebar(deps = {}) {
       'pointerdown',
       (e) => {
         if (!isOpen() || e.target.closest('#componentSidebar') || e.target.closest('#componentToggle')) return;
+
+        getVisibility?.()?.clearHoverUX?.();
+        clearHover?.();
+
         closeSidebar();
       },
       { capture: true }
@@ -683,7 +578,11 @@ export function initComponentSidebar(deps = {}) {
   if (!escBound) {
     escBound = true;
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && isOpen()) closeSidebar();
+      if (e.key === 'Escape' && isOpen()) {
+        getVisibility?.()?.clearHoverUX?.();
+        clearHover?.();
+        closeSidebar();
+      }
     });
   }
 }

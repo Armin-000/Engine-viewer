@@ -19,6 +19,8 @@ let labelItemsRef = null;
 
 let externalVisibilityRefresh = null;
 
+let visibilityRef = null;
+
 /* ======================================================================
    HELPERS: RENDERABLE SETS
 ====================================================================== */
@@ -28,7 +30,6 @@ function isRenderablePart(o) {
 }
 
 function getRenderableRoot(obj) {
-  // If user clicks a child node that isn't mesh, walk up until we find renderable.
   if (!obj) return obj;
   if (isRenderablePart(obj)) return obj;
 
@@ -74,12 +75,9 @@ let infoDocBtn = null;
 
 /* ======================================================================
    PART DATA (Engine 2.0)
-   - Keys here are "canonical" names.
-   - Canonical resolution tries to match label/name/parents via normalizeKey().
 ====================================================================== */
 
 const PART_INFO = {
-  /* -------- Major engine structures -------- */
   'Main Block':
     'Primary engine block structure providing mounting surfaces and internal channels for lubrication and cooling.',
   'Engine Block':
@@ -93,7 +91,6 @@ const PART_INFO = {
   'Main Interface':
     'Primary interface area for mating parts and mounting to adjacent assemblies.',
 
-  /* -------- Mounting & fasteners -------- */
   'Engine Mounts':
     'Mounting system that supports the engine and helps reduce vibration transfer to the chassis or frame.',
   'Carrying Carrier':
@@ -101,7 +98,6 @@ const PART_INFO = {
   'Engine Screws':
     'Fasteners used throughout the engine assembly.',
 
-  /* -------- Exhaust -------- */
   Exhaust:
     'Exhaust system routing combustion gases away from the engine. Designed for flow, noise control, and emissions.',
   'Exhaust Continuation':
@@ -109,7 +105,6 @@ const PART_INFO = {
   'Exhaust Filter':
     'Exhaust filtration component (e.g., DPF/catalyst section) designed to reduce emissions.',
 
-  /* -------- Turbo / intake -------- */
   'Turbo System':
     'Turbocharger-related assemblies improving engine efficiency by compressing intake air.',
   'Turbo (Opposite Side)':
@@ -127,7 +122,6 @@ const PART_INFO = {
   'Turbo Intake Manifold':
     'Manifold routing intake air to engine cylinders, designed for flow distribution.',
 
-  /* -------- Fluids / oil / fuel -------- */
   'Oil Lubricator':
     'Lubrication-related component supporting oil distribution and protection of moving parts.',
   'Oil System Parts':
@@ -137,13 +131,9 @@ const PART_INFO = {
   'Fuel Supply':
     'Fuel supply routing and components that deliver fuel to the engine system.',
 
-  /* -------- Mechanical / misc -------- */
-  Gear:
-    'Gear element involved in mechanical transmission of motion.',
-  Reduction:
-    'Reduction assembly that modifies rotational speed and torque.',
-  Lamella:
-    'Lamella / plate-like structural element used for spacing, filtering, or reinforcement.',
+  Gear: 'Gear element involved in mechanical transmission of motion.',
+  Reduction: 'Reduction assembly that modifies rotational speed and torque.',
+  Lamella: 'Lamella / plate-like structural element used for spacing, filtering, or reinforcement.',
   'Load-bearing Columns':
     'Structural columns designed to carry loads and provide stability.',
   'Metal Covers':
@@ -159,19 +149,13 @@ const PART_INFO = {
   'Cylinder Intake / Import':
     'Cylinder intake-related group. Components associated with intake routing to cylinders.',
 
-  /* fallback */
   'Engine Component': 'General engine component.',
 };
 
 const PART_DOCS = {
-  // Optional: set to your real pdf paths if you have them.
-  // Example:
-  // 'Exhaust Filter': '/docs/help/Exhaust_Filter_Spec.pdf',
-  // 'Turbo Intake Manifold': '/docs/help/Turbo_Intake_Manifold.pdf',
   'Engine Component': '/docs/help/3D_Model_User_Guide.pdf',
 };
 
-/* Map raw names to canonical names (small & explicit) */
 const RAW_TO_CANONICAL = {
   'Engine parts': 'Engine Parts',
   'Engine block': 'Engine Block',
@@ -245,7 +229,6 @@ function buildAutoIndex() {
   for (const k of Object.keys(PART_INFO)) add(INFO_INDEX, k, k);
   for (const k of Object.keys(PART_DOCS)) add(DOC_INDEX, k, k);
 
-  // Alias improvements (small, but helps matching)
   for (const canonical of Object.keys(PART_INFO)) {
     add(INFO_INDEX, canonical.replace(/\b(the|a|an)\b/gi, '').trim(), canonical);
     add(INFO_INDEX, canonical.replace(/\s+/g, ' ').trim(), canonical);
@@ -255,7 +238,6 @@ function buildAutoIndex() {
     add(DOC_INDEX, canonical.replace(/\b(the|a|an)\b/gi, '').trim(), canonical);
   }
 
-  // raw->canonical aliases
   for (const raw in RAW_TO_CANONICAL) add(INFO_INDEX, raw, RAW_TO_CANONICAL[raw]);
   for (const raw in RAW_TO_CANONICAL) add(DOC_INDEX, raw, RAW_TO_CANONICAL[raw]);
 }
@@ -284,7 +266,6 @@ function resolveCanonicalKey(labelText, meshOrObj) {
 
   const direct = (s) => (s && RAW_TO_CANONICAL[s] ? RAW_TO_CANONICAL[s] : null);
 
-  // Direct raw match first
   const hitA = direct(labelText);
   if (hitA) return hitA;
 
@@ -294,7 +275,6 @@ function resolveCanonicalKey(labelText, meshOrObj) {
   const hitC = direct(meshOrObj?.name);
   if (hitC) return hitC;
 
-  // Parent chain raw match
   let p = meshOrObj?.parent;
   let depth = 0;
   while (p && depth < 6) {
@@ -306,7 +286,6 @@ function resolveCanonicalKey(labelText, meshOrObj) {
     depth++;
   }
 
-  // Normalized index match (exact)
   const candidates = getCandidates(labelText, meshOrObj);
   const normCandidates = candidates.map(normalizeKey).filter(Boolean);
 
@@ -314,7 +293,6 @@ function resolveCanonicalKey(labelText, meshOrObj) {
     if (INFO_INDEX.has(nk)) return INFO_INDEX.get(nk);
   }
 
-  // Loose contains match (useful for Blender suffixes)
   const canonKeys = Object.keys(PART_INFO);
   const canonNorm = canonKeys.map((k) => [k, normalizeKey(k)]);
 
@@ -453,13 +431,14 @@ function hideInfoPanel() {
    INIT / PUBLIC FLAGS
 ====================================================================== */
 
-export function initFocus({ camera, controls, root, labelItems, refreshVisibility }) {
+export function initFocus({ camera, controls, root, labelItems, refreshVisibility, visibility = null }) {
   cameraRef = camera || null;
   controlsRef = controls || null;
   rootRef = root || null;
   labelItemsRef = labelItems || null;
 
   externalVisibilityRefresh = typeof refreshVisibility === 'function' ? refreshVisibility : null;
+  visibilityRef = visibility || null;
 }
 
 export function isFocusMode() {
@@ -471,8 +450,7 @@ export function getFocusedRoot() {
 }
 
 /* ======================================================================
-   CAMERA FRAMING (senior-ish)
-   - Uses bounding sphere and aligns with current camera direction.
+   CAMERA FRAMING
 ====================================================================== */
 
 function computeFramedCameraPosition(targetObj) {
@@ -482,11 +460,9 @@ function computeFramedCameraPosition(targetObj) {
   box.getCenter(center);
   box.getSize(size);
 
-  // Fallback for degenerate boxes
   const maxDim = Math.max(size.x, size.y, size.z);
   const safeDim = Math.max(maxDim, 0.25);
 
-  // Use bounding sphere radius as stable framing metric
   const sphere = new THREE.Sphere();
   box.getBoundingSphere(sphere);
   const radius = Math.max(sphere.radius, safeDim * 0.5);
@@ -494,15 +470,12 @@ function computeFramedCameraPosition(targetObj) {
   const fov = (cameraRef.fov * Math.PI) / 180;
   const fit = radius / Math.tan(fov / 2);
 
-  // Padding factor (tweakable)
   const distance = Math.max(fit * 1.25, 0.8);
 
-  // Direction: keep current camera -> target direction for natural feel
   const dir = new THREE.Vector3()
     .subVectors(cameraRef.position, controlsRef.target)
     .normalize();
 
-  // If direction is invalid (rare), use a sensible default
   if (!Number.isFinite(dir.x + dir.y + dir.z) || dir.lengthSq() < 1e-6) {
     dir.set(2.5, 1.5, 2.5).normalize();
   }
@@ -519,10 +492,11 @@ export function focusOnPart(meshOrObj, labelText) {
   if (!cameraRef || !controlsRef || !rootRef) return;
   if (!meshOrObj) return;
 
+  visibilityRef?.clearHoverUX?.();
+
   const targetRoot = getRenderableRoot(meshOrObj);
   if (focusedRoot === targetRoot) return;
 
-  // switching focus: stop previous tweens + hide panel
   if (focusMode && focusedRoot && focusedRoot !== targetRoot) {
     if (gsap) {
       gsap.killTweensOf(cameraRef.position);
@@ -531,7 +505,6 @@ export function focusOnPart(meshOrObj, labelText) {
     hideInfoPanel();
   }
 
-  // first entry into focus mode: save state
   if (!focusedRoot) {
     savedVisibility.clear();
     rootRef.traverse((o) => {
@@ -553,14 +526,12 @@ export function focusOnPart(meshOrObj, labelText) {
   focusedRoot = targetRoot;
   focusMode = true;
 
-  // hide all labels in focus mode (clean look)
   if (Array.isArray(labelItemsRef)) {
     labelItemsRef.forEach((item) => {
       if (item?.el) item.el.style.display = 'none';
     });
   }
 
-  // isolate visibility for the target subtree
   const allowed = collectRenderableSubtree(targetRoot);
   rootRef.traverse((o) => {
     if (!isRenderablePart(o)) return;
@@ -568,7 +539,6 @@ export function focusOnPart(meshOrObj, labelText) {
   });
 
   const { center, newPos } = computeFramedCameraPosition(targetRoot);
-
   const duration = 0.8;
 
   if (gsap) {
@@ -605,6 +575,14 @@ export function focusOnPart(meshOrObj, labelText) {
     meshOrObj?.name ||
     '';
 
+  if (meshOrObj?.uuid) {
+    window.dispatchEvent(
+      new CustomEvent('engine:focus', {
+        detail: { uuid: meshOrObj.uuid, label: autoLabel },
+      })
+    );
+  }
+
   showInfoPanel(autoLabel, meshOrObj);
 }
 
@@ -613,6 +591,8 @@ export function focusOnPart(meshOrObj, labelText) {
 ====================================================================== */
 
 export function exitFocusMode() {
+  visibilityRef?.clearHoverUX?.();
+
   if (!cameraRef || !controlsRef || !rootRef) {
     hideInfoPanel();
     focusedRoot = null;
@@ -626,7 +606,6 @@ export function exitFocusMode() {
     return;
   }
 
-  // restore visibility
   rootRef.traverse((o) => {
     if (!isRenderablePart(o)) return;
     if (savedVisibility.has(o)) o.visible = savedVisibility.get(o);
@@ -636,7 +615,6 @@ export function exitFocusMode() {
   focusMode = false;
   hideInfoPanel();
 
-  // restore labels
   if (Array.isArray(labelItemsRef)) {
     labelItemsRef.forEach((item) => {
       if (!item?.el) return;

@@ -37,24 +37,6 @@ export const viewPreset = {
 };
 
 /* ======================================================================
-   FOCUS EVENT
-====================================================================== */
-
-function emitFocusEvent(mesh, label) {
-  if (!mesh) return;
-
-  window.dispatchEvent(
-    new CustomEvent('engine:focus', {
-      detail: {
-        uuid: mesh.uuid || null,
-        name: mesh.name || '',
-        label: label || '',
-      },
-    })
-  );
-}
-
-/* ======================================================================
    SCENE REFS
 ====================================================================== */
 
@@ -65,7 +47,7 @@ let rendererRef = null;
 let rootRef = null;
 
 /* ======================================================================
-   HOVER HIGHLIGHT (FIXED)
+   HOVER HIGHLIGHT
 ====================================================================== */
 
 let hoveredMesh = null;
@@ -164,7 +146,7 @@ export async function afterLoad(root, _THREE, extra = {}) {
   picking = null;
 
   clearHover();
-  visibility?.clearHoverDim?.();
+  visibility?.clearHoverUX?.();
 
   cameraRef = extra.camera || null;
   controlsRef = extra.controls || null;
@@ -179,6 +161,11 @@ export async function afterLoad(root, _THREE, extra = {}) {
 
   prepareExplode(rootRef, { getNiceName });
 
+  visibility = createVisibilityController({
+    root: rootRef,
+    labelItems,
+  });
+
   setupLabels(root, {
     cameraRef,
     containerRef,
@@ -186,19 +173,12 @@ export async function afterLoad(root, _THREE, extra = {}) {
     getNiceName,
     focusOnPart: (mesh, label) => {
       clearHover();
-      visibility?.clearHoverDim?.();
-
+      visibility?.clearHoverUX?.();
       focusOnPart(mesh, label);
-      emitFocusEvent(mesh, label);
     },
     isFocusMode,
     setHoverMesh,
     clearHover,
-  });
-
-  visibility = createVisibilityController({
-    root: rootRef,
-    labelItems,
   });
 
   resetCtl = createResetController({
@@ -223,6 +203,7 @@ export async function afterLoad(root, _THREE, extra = {}) {
     root: rootRef,
     labelItems,
     refreshVisibility: () => visibility.refreshVisibility(),
+    visibility,
   });
 
   picking = createPicking({
@@ -233,24 +214,22 @@ export async function afterLoad(root, _THREE, extra = {}) {
     canPick: () => state.isExploded && !isFocusMode(),
 
     onHoverMesh: (m) => {
-      visibility?.clearHoverDim?.();
+      visibility?.clearHoverUX?.();
 
       if (m) {
         setHoverMesh(m);
-        visibility?.dimOthersForHover?.(m);
+        visibility?.applyHoverUX?.(m);
       } else {
         clearHover();
+        visibility?.clearHoverUX?.();
       }
     },
 
     onPickMesh: (m) => {
       const label = getNiceName(m);
-
       clearHover();
-      visibility?.clearHoverDim?.();
-
+      visibility?.clearHoverUX?.();
       focusOnPart(m, label);
-      emitFocusEvent(m, label);
     },
   });
 
@@ -264,13 +243,17 @@ export async function afterLoad(root, _THREE, extra = {}) {
     prettyFromNodeName,
     getNiceName,
     collectMeshesInSubtree,
+
     showOnlyMeshes: (set, ownerPath) => visibility.showOnlyMeshes(set, ownerPath),
     showAllParts: () => visibility.showAllParts(),
+
     focusOnPart,
     isFocusMode,
     exitFocusMode,
+
     setHoverMesh,
     clearHover,
+
     getActiveFilterOwnerPath: () => visibility.getActiveFilterOwnerPath(),
 
     isMeshHidden: (m) => visibility.isMeshHidden(m),
@@ -278,9 +261,13 @@ export async function afterLoad(root, _THREE, extra = {}) {
     setMeshesHidden: (arr, hidden) => visibility.setMeshesHidden(arr, hidden),
     refreshVisibility: () => visibility.refreshVisibility(),
 
+    getVisibility: () => visibility,
+
     helpUrl: '/docs/help/3D_Model_User_Guide.pdf',
 
-    onReset: async () => { await resetCtl?.resetEverything?.(); },
+    onReset: async () => {
+      await resetCtl?.resetEverything?.();
+    },
   });
 
   stopAnim();
@@ -288,7 +275,7 @@ export async function afterLoad(root, _THREE, extra = {}) {
   state.isExploded = false;
 
   visibility.showAllParts();
-  visibility?.clearHoverDim?.();
+  visibility?.clearHoverUX?.();
   clearHover();
 
   const nameEl = document.getElementById('model-name');
