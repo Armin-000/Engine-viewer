@@ -32,11 +32,9 @@ Each module has a strict responsibility to avoid cross-dependencies and tight co
 
 # Project Structure
 
-```
-
+```text
 ENGINE2.0/
 ├─ .vscode/
-│
 ├─ css/
 │  ├─ viewer-base.css
 │  ├─ viewer-ui.css
@@ -53,9 +51,12 @@ ENGINE2.0/
 │
 ├─ public/
 │  ├─ glb/
+│  │  └─ engine2.glb
 │  ├─ hdr/
+│  │  └─ venice_sunset_1k.hdr
 │  ├─ images/
 │  ├─ docs/
+│  │  └─ help/
 │  └─ favicon/
 │
 ├─ viewer/
@@ -74,15 +75,10 @@ ENGINE2.0/
 │     ├─ engine-reset.js
 │     └─ engine-specs.js
 │
-├─ node_modules/
-├─ dist/
 ├─ index.html
 ├─ vite.config.js
 ├─ package.json
-├─ package-lock.json
-├─ .gitignore
 └─ README.md
-
 ```
 
 ---
