@@ -416,4 +416,4 @@ The current structure allows:
 - Future migration to multi-model architecture
 
 This architecture is designed for long-term maintainability and feature expansion.
-```
+
